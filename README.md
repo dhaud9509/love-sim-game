@@ -1,32 +1,36 @@
-# React + TypeScript + Vite
+# 80억분의 1 — 연애 시뮬레이션
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+"80억분의 1" 스타일의 선택형 비주얼노벨 연애 시뮬레이션 웹게임입니다. 20개의 선택형 질문과 10번의 "지나가는 상대" 호감 표시를 거치며 후보가 좁혀지고, 마지막에 이상형 캐릭터 한 명(성격 4종 × 분위기 4종, 총 16가지 조합)이 확정됩니다.
 
-Currently, two official plugins are available:
+## 주요 기능
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **선택형 비주얼노벨 진행**: 질문 20개 + 호감도 후보 10명, localStorage로 중간 진행 저장 및 "이어서 하기" 지원
+- **결과 매칭**: 선택의 일관성에 따라 희귀도(일반/레어/에픽/레전더리)와 "지구에 약 N명" 수치 계산
+- **캐릭터 일러스트**: 외부 이미지 생성 없이 코드로 그리는 SVG 벡터 포트레이트 (16가지 조합 모두 시각적으로 구분)
+- **공유 카드**: 결과를 Canvas로 렌더링해 이미지 다운로드
+- **공유 링크**: 결과 도달 시 URL이 `?r=캐릭터키&m=매칭수`로 자동 동기화되어, 링크를 받은 사람이 바로 같은 결과를 보고 "나도 내 이상형 찾아보기"로 유도되는 바이럴 공유 루프
+- **공유하기**: Web Share API 지원 환경(모바일)에서 이미지+텍스트+링크를 한 번에 공유, 미지원 환경은 링크 복사로 자동 폴백
+- **매칭 영상**: 캐릭터 포트레이트에 숨쉬기·눈 깜빡임·스파클 애니메이션을 입혀 `canvas.captureStream` + `MediaRecorder`로 실시간 녹화한 5초 세로형(9:16) WebM 영상 생성 및 다운로드/공유
+- **굿즈 미리보기**: 폰케이스/스티커/머그컵 목업에 캐릭터를 합성해 미리보기 및 이미지 다운로드 (실제 주문·결제는 미구현 — 준비 중 안내만 표시)
 
-## React Compiler
+모두 외부 API나 서버 비용 없이 순수 프론트엔드에서 동작합니다.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 기술 스택
 
-## Expanding the Oxlint configuration
+- React + TypeScript + Vite
+- Canvas API (공유 카드, 매칭 영상, 굿즈 목업 렌더링)
+- MediaRecorder API (매칭 영상 녹화)
+- localStorage (진행 상태 저장)
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+## 개발
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+npm install
+npm run dev      # 개발 서버
+npm run build    # 프로덕션 빌드 (tsc + vite build)
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## 향후 계획
+
+- 더 실사에 가까운 AI 기반 영상 생성 (외부 image-to-video API, 백엔드 필요)
+- 굿즈 실제 주문·결제 연동 (POD 업체 API, 결제 게이트웨이, 사업자 등록 필요)
