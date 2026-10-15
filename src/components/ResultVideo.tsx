@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { track } from '@vercel/analytics'
 import type { GameResult } from '../types'
 import { portraitDataUrl } from '../portrait'
 import { loadImage, roundRect } from '../canvasUtils'
@@ -112,6 +113,7 @@ export function ResultVideo({ result }: ResultVideoProps) {
       setVideoBlob(blob)
       setVideoUrl(URL.createObjectURL(blob))
       setStatus('done')
+      track('video_generated', { character: result.character.key })
     }
 
     recorder.start()
@@ -138,6 +140,7 @@ export function ResultVideo({ result }: ResultVideoProps) {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+    track('video_download', { character: result.character.key })
   }
 
   async function handleShare() {
@@ -150,6 +153,7 @@ export function ResultVideo({ result }: ResultVideoProps) {
           title: '80억분의 1 · 연애 시뮬레이션',
           text: `'${result.character.name}'과(와)의 매칭 영상이야!`,
         })
+        track('video_share', { character: result.character.key })
       }
     } catch {
       // user cancelled or share unsupported — the download button already covers this case

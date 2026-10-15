@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { track } from '@vercel/analytics'
 import type { GameResult } from '../types'
 import { portraitDataUrl } from '../portrait'
 import { loadImage, roundRect } from '../canvasUtils'
@@ -52,6 +53,7 @@ export function GoodsPreview({ result }: GoodsPreviewProps) {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+    track('goods_mockup_download', { character: result.character.key, product })
   }
 
   return (

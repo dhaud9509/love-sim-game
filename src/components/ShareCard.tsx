@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { track } from '@vercel/analytics'
 import type { GameResult } from '../types'
 import { portraitDataUrl } from '../portrait'
 
@@ -45,6 +46,7 @@ export function ShareCard({ result, shareUrl }: ShareCardProps) {
     try {
       await navigator.clipboard.writeText(shareUrl)
       flashCopyStatus('copied')
+      track('share_copy_link', { character: result.character.key })
     } catch {
       flashCopyStatus('error')
     }
@@ -59,6 +61,7 @@ export function ShareCard({ result, shareUrl }: ShareCardProps) {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+    track('share_download_image', { character: result.character.key })
   }
 
   async function handleShare() {
@@ -73,11 +76,13 @@ export function ShareCard({ result, shareUrl }: ShareCardProps) {
             const file = new File([blob], `love-sim-result-${result.character.key}.png`, { type: 'image/png' })
             if (navigator.canShare({ files: [file] })) {
               await navigator.share({ files: [file], title: '80억분의 1 · 연애 시뮬레이션', text: shareText, url: shareUrl })
+              track('share_native', { character: result.character.key })
               return
             }
           }
         }
         await navigator.share({ title: '80억분의 1 · 연애 시뮬레이션', text: shareText, url: shareUrl })
+        track('share_native', { character: result.character.key })
         return
       } catch (err) {
         if ((err as Error)?.name === 'AbortError') return

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { track } from '@vercel/analytics'
 import './App.css'
 import { IntroScreen } from './components/IntroScreen'
 import { QuestionScreen } from './components/QuestionScreen'
@@ -60,6 +61,7 @@ function App() {
       setResult(shared)
       setIsSharedView(true)
       setScreen('result')
+      track('shared_view_opened', { character: shared.character.key })
       return
     }
     setHasSavedProgress(loadSavedProgress() !== null)
@@ -78,6 +80,7 @@ function App() {
       setIsSharedView(false)
       setScreen('result')
       syncShareUrl(finalResult)
+      track('result_reached', { character: finalResult.character.key, tier: finalResult.tier })
       return
     }
     persist(index, nextPersonality, nextVibe)
@@ -90,6 +93,7 @@ function App() {
   function handleStartFresh() {
     localStorage.removeItem(STORAGE_KEY)
     setHasSavedProgress(false)
+    track('game_start')
     goToStep(0, initialPersonalityScores, initialVibeScores)
   }
 
