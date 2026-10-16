@@ -1,49 +1,40 @@
-export type PersonalityTrait = 'warm' | 'cool' | 'humor' | 'serious'
-export type AppearanceVibe = 'cute' | 'chic' | 'elegant' | 'bright'
+export type FinanceCategory = 'income' | 'spending' | 'realEstate' | 'stocks' | 'insurance'
 
-export type PersonalityScores = Record<PersonalityTrait, number>
-export type VibeScores = Record<AppearanceVibe, number>
-
-export type RarityTier = '일반' | '레어' | '에픽' | '레전더리'
+export type Tier = '흙수저' | '은수저' | '금수저' | '다이아몬드수저'
 
 export interface QuestionChoice {
   text: string
-  trait: PersonalityTrait
-  weight: number
+  score: number
 }
 
 export interface Question {
   id: string
+  category: FinanceCategory
   scene: string
   prompt: string
   choices: QuestionChoice[]
 }
 
-export interface Candidate {
-  id: string
-  name: string
-  vibe: AppearanceVibe
-  blurb: string
-  weight: number
+export type CategoryScores = Record<FinanceCategory, number>
+
+export interface CategoryResult {
+  category: FinanceCategory
+  score: number
+  percentile: number
 }
 
-export interface CharacterProfile {
-  key: string
-  trait: PersonalityTrait
-  vibe: AppearanceVibe
-  name: string
+export interface TierProfile {
+  tier: Tier
   tagline: string
-  line: string
   gradient: [string, string]
-  tier: RarityTier
 }
 
 export interface GameResult {
-  character: CharacterProfile
-  tier: RarityTier
-  matchCount: number
-  traitLabel: string
-  vibeLabel: string
+  tier: Tier
+  overallPercentile: number
+  categories: CategoryResult[]
+  strongest: CategoryResult
+  weakest: CategoryResult
 }
 
-export type Screen = 'intro' | 'question' | 'candidate' | 'result'
+export type Screen = 'intro' | 'question' | 'result'

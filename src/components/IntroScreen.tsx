@@ -7,16 +7,16 @@ interface IntroScreenProps {
 export function IntroScreen({ onStart, hasSavedProgress, onContinue }: IntroScreenProps) {
   return (
     <div className="screen intro-screen">
-      <p className="eyebrow">LOVE SIMULATION</p>
-      <h1 className="counter-number">8,000,000,000</h1>
-      <h2>80억 명 중, 당신의 사람은 단 한 명</h2>
+      <p className="eyebrow">WEALTH PERCENTILE TEST</p>
+      <h1 className="counter-number">상위 몇 %?</h1>
+      <h2>재력 백분위 테스트</h2>
       <p className="description">
-        몇 가지 선택만으로 당신의 이상형이 어떤 성격과 분위기를 가진 사람인지
-        찾아드립니다. 선택을 거듭할수록 후보는 줄어들고, 마지막엔 단 한 사람이
-        남습니다.
+        수입·지출·부동산·주식·보험, 5개 항목 20문항으로 알아보는 내 재력
+        상세 분석. 질문에 답하면 항목별 레이더 차트와 함께 당신의 재력
+        등급(수저계급)과 전체 백분위가 나옵니다.
       </p>
       <button className="primary-button" onClick={onStart}>
-        {hasSavedProgress ? '새로 시작하기' : '시작하기'}
+        {hasSavedProgress ? '새로 시작하기' : '테스트 시작하기'}
       </button>
       {hasSavedProgress && (
         <button className="secondary-button" onClick={onContinue}>

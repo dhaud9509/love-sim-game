@@ -1,34 +1,41 @@
-import { characterPool, traitLabels, vibeLabels } from '../data/characters'
-import type { GameResult } from '../types'
+import { computeResult } from './engine'
+import type { CategoryScores, FinanceCategory, GameResult } from '../types'
 
-const DEFAULT_MATCH_COUNT = 1000
+export const CATEGORY_PARAMS: Record<FinanceCategory, string> = {
+  income: 'inc',
+  spending: 'sp',
+  realEstate: 're',
+  stocks: 'st',
+  insurance: 'ins',
+}
+
+function resultToScores(result: GameResult): CategoryScores {
+  const scores = {} as CategoryScores
+  for (const c of result.categories) scores[c.category] = c.score
+  return scores
+}
 
 export function buildShareUrl(result: GameResult): string {
   const url = new URL(window.location.href)
   url.search = ''
-  url.searchParams.set('r', result.character.key)
-  url.searchParams.set('m', String(result.matchCount))
+  const scores = resultToScores(result)
+  for (const [category, param] of Object.entries(CATEGORY_PARAMS) as [FinanceCategory, string][]) {
+    url.searchParams.set(param, String(scores[category]))
+  }
   return url.toString()
 }
 
 export function parseSharedResult(): GameResult | null {
   const params = new URLSearchParams(window.location.search)
-  const key = params.get('r')
-  if (!key) return null
+  const entries = Object.entries(CATEGORY_PARAMS) as [FinanceCategory, string][]
+  if (!entries.some(([, param]) => params.has(param))) return null
 
-  const character = characterPool[key]
-  if (!character) return null
-
-  const rawCount = Number(params.get('m'))
-  const matchCount = Number.isFinite(rawCount) && rawCount > 0 ? Math.round(rawCount) : DEFAULT_MATCH_COUNT
-
-  return {
-    character,
-    tier: character.tier,
-    matchCount,
-    traitLabel: traitLabels[character.trait],
-    vibeLabel: vibeLabels[character.vibe],
+  const scores = {} as CategoryScores
+  for (const [category, param] of entries) {
+    const raw = Number(params.get(param))
+    scores[category] = Number.isFinite(raw) && raw >= 0 ? raw : 0
   }
+  return computeResult(scores)
 }
 
 export function clearShareParams() {

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { track } from '@vercel/analytics'
 import type { GameResult } from '../types'
-import { portraitDataUrl } from '../portrait'
+import { badgeDataUrl } from '../badge'
+import { tierProfiles } from '../data/tiers'
 import { loadImage, roundRect } from '../canvasUtils'
 
 interface GoodsPreviewProps {
@@ -21,12 +22,12 @@ const PRODUCT_LABELS: Record<Product, string> = {
 export function GoodsPreview({ result }: GoodsPreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [product, setProduct] = useState<Product>('case')
-  const [portraitImg, setPortraitImg] = useState<HTMLImageElement | null>(null)
+  const [badgeImg, setBadgeImg] = useState<HTMLImageElement | null>(null)
 
   useEffect(() => {
     let cancelled = false
-    loadImage(portraitDataUrl({ vibe: result.character.vibe, trait: result.character.trait })).then((img) => {
-      if (!cancelled) setPortraitImg(img)
+    loadImage(badgeDataUrl(result.tier)).then((img) => {
+      if (!cancelled) setBadgeImg(img)
     })
     return () => {
       cancelled = true
@@ -36,24 +37,24 @@ export function GoodsPreview({ result }: GoodsPreviewProps) {
   useEffect(() => {
     const canvas = canvasRef.current
     const ctx = canvas?.getContext('2d')
-    if (!canvas || !ctx || !portraitImg) return
+    if (!canvas || !ctx || !badgeImg) return
 
     ctx.clearRect(0, 0, SIZE, SIZE)
-    if (product === 'case') drawPhoneCase(ctx, result, portraitImg)
-    if (product === 'sticker') drawStickerSheet(ctx, result, portraitImg)
-    if (product === 'mug') drawMug(ctx, result, portraitImg)
-  }, [product, portraitImg, result])
+    if (product === 'case') drawPhoneCase(ctx, result, badgeImg)
+    if (product === 'sticker') drawStickerSheet(ctx, result, badgeImg)
+    if (product === 'mug') drawMug(ctx, result, badgeImg)
+  }, [product, badgeImg, result])
 
   function handleDownload() {
     const canvas = canvasRef.current
     if (!canvas) return
     const link = document.createElement('a')
-    link.download = `love-sim-goods-${product}-${result.character.key}.png`
+    link.download = `wealth-test-goods-${product}-${result.tier}.png`
     link.href = canvas.toDataURL('image/png')
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-    track('goods_mockup_download', { character: result.character.key, product })
+    track('goods_mockup_download', { tier: result.tier, product })
   }
 
   return (
@@ -83,8 +84,8 @@ export function GoodsPreview({ result }: GoodsPreviewProps) {
   )
 }
 
-function drawPhoneCase(ctx: CanvasRenderingContext2D, result: GameResult, portrait: HTMLImageElement) {
-  const { character } = result
+function drawPhoneCase(ctx: CanvasRenderingContext2D, result: GameResult, badge: HTMLImageElement) {
+  const profile = tierProfiles[result.tier]
 
   ctx.fillStyle = '#f3f1f6'
   ctx.fillRect(0, 0, SIZE, SIZE)
@@ -94,8 +95,8 @@ function drawPhoneCase(ctx: CanvasRenderingContext2D, result: GameResult, portra
   ctx.fill()
 
   const gradient = ctx.createLinearGradient(0, 40, 0, 440)
-  gradient.addColorStop(0, character.gradient[0])
-  gradient.addColorStop(1, character.gradient[1])
+  gradient.addColorStop(0, profile.gradient[0])
+  gradient.addColorStop(1, profile.gradient[1])
   roundRect(ctx, 140, 50, 200, 380, 34)
   ctx.fillStyle = gradient
   ctx.fill()
@@ -105,36 +106,36 @@ function drawPhoneCase(ctx: CanvasRenderingContext2D, result: GameResult, portra
   ctx.fillStyle = 'rgba(0,0,0,0.3)'
   ctx.fill()
 
-  const portraitRadius = 70
-  const portraitY = 220
+  const badgeRadius = 70
+  const badgeY = 220
   ctx.save()
   ctx.beginPath()
-  ctx.arc(240, portraitY, portraitRadius, 0, Math.PI * 2)
+  ctx.arc(240, badgeY, badgeRadius, 0, Math.PI * 2)
   ctx.closePath()
   ctx.fillStyle = 'rgba(255,255,255,0.25)'
   ctx.fill()
   ctx.clip()
-  ctx.drawImage(portrait, 240 - portraitRadius, portraitY - portraitRadius, portraitRadius * 2, portraitRadius * 2)
+  ctx.drawImage(badge, 240 - badgeRadius, badgeY - badgeRadius, badgeRadius * 2, badgeRadius * 2)
   ctx.restore()
 
   ctx.strokeStyle = 'rgba(255,255,255,0.7)'
   ctx.lineWidth = 3
   ctx.beginPath()
-  ctx.arc(240, portraitY, portraitRadius, 0, Math.PI * 2)
+  ctx.arc(240, badgeY, badgeRadius, 0, Math.PI * 2)
   ctx.stroke()
 
   ctx.textAlign = 'center'
   ctx.fillStyle = 'rgba(255,255,255,0.95)'
   ctx.font = '800 26px system-ui, sans-serif'
-  ctx.fillText(character.name, 240, 320)
+  ctx.fillText(result.tier, 240, 320)
 
   ctx.font = '500 13px system-ui, sans-serif'
   ctx.fillStyle = 'rgba(255,255,255,0.8)'
-  ctx.fillText('80억분의 1 · 연애 시뮬레이션', 240, 400)
+  ctx.fillText('재력 백분위 테스트', 240, 400)
 }
 
-function drawStickerSheet(ctx: CanvasRenderingContext2D, result: GameResult, portrait: HTMLImageElement) {
-  const { character } = result
+function drawStickerSheet(ctx: CanvasRenderingContext2D, result: GameResult, badge: HTMLImageElement) {
+  const profile = tierProfiles[result.tier]
 
   ctx.fillStyle = '#e9e7ee'
   ctx.fillRect(0, 0, SIZE, SIZE)
@@ -170,12 +171,12 @@ function drawStickerSheet(ctx: CanvasRenderingContext2D, result: GameResult, por
     ctx.arc(0, 0, s.r, 0, Math.PI * 2)
     ctx.closePath()
     const gradient = ctx.createLinearGradient(-s.r, -s.r, s.r, s.r)
-    gradient.addColorStop(0, character.gradient[0])
-    gradient.addColorStop(1, character.gradient[1])
+    gradient.addColorStop(0, profile.gradient[0])
+    gradient.addColorStop(1, profile.gradient[1])
     ctx.fillStyle = gradient
     ctx.fill()
     ctx.clip()
-    ctx.drawImage(portrait, -s.r, -s.r, s.r * 2, s.r * 2)
+    ctx.drawImage(badge, -s.r, -s.r, s.r * 2, s.r * 2)
     ctx.restore()
 
     ctx.restore()
@@ -189,14 +190,14 @@ function drawStickerSheet(ctx: CanvasRenderingContext2D, result: GameResult, por
     ctx.bezierCurveTo(-size, -size * 0.6, -size * 0.3, -size, 0, -size * 0.2)
     ctx.bezierCurveTo(size * 0.3, -size, size, -size * 0.6, 0, size * 0.3)
     ctx.closePath()
-    ctx.fillStyle = character.gradient[0]
+    ctx.fillStyle = profile.gradient[0]
     ctx.fill()
     ctx.restore()
   }
 }
 
-function drawMug(ctx: CanvasRenderingContext2D, result: GameResult, portrait: HTMLImageElement) {
-  const { character } = result
+function drawMug(ctx: CanvasRenderingContext2D, result: GameResult, badge: HTMLImageElement) {
+  const profile = tierProfiles[result.tier]
 
   ctx.fillStyle = '#efeef2'
   ctx.fillRect(0, 0, SIZE, SIZE)
@@ -222,35 +223,35 @@ function drawMug(ctx: CanvasRenderingContext2D, result: GameResult, portrait: HT
   ctx.stroke()
 
   const gradient = ctx.createLinearGradient(140, 190, 350, 320)
-  gradient.addColorStop(0, character.gradient[0])
-  gradient.addColorStop(1, character.gradient[1])
+  gradient.addColorStop(0, profile.gradient[0])
+  gradient.addColorStop(1, profile.gradient[1])
   roundRect(ctx, 140, 190, 210, 130, 4)
   ctx.fillStyle = gradient
   ctx.fill()
 
-  const portraitRadius = 42
+  const badgeRadius = 42
   ctx.save()
   ctx.beginPath()
-  ctx.arc(245, 255, portraitRadius, 0, Math.PI * 2)
+  ctx.arc(245, 255, badgeRadius, 0, Math.PI * 2)
   ctx.closePath()
   ctx.fillStyle = 'rgba(255,255,255,0.25)'
   ctx.fill()
   ctx.clip()
-  ctx.drawImage(portrait, 245 - portraitRadius, 255 - portraitRadius, portraitRadius * 2, portraitRadius * 2)
+  ctx.drawImage(badge, 245 - badgeRadius, 255 - badgeRadius, badgeRadius * 2, badgeRadius * 2)
   ctx.restore()
 
   ctx.strokeStyle = 'rgba(255,255,255,0.8)'
   ctx.lineWidth = 2.5
   ctx.beginPath()
-  ctx.arc(245, 255, portraitRadius, 0, Math.PI * 2)
+  ctx.arc(245, 255, badgeRadius, 0, Math.PI * 2)
   ctx.stroke()
 
   ctx.textAlign = 'center'
   ctx.fillStyle = '#ffffff'
   ctx.font = '800 18px system-ui, sans-serif'
-  ctx.fillText(character.name, 245, 310)
+  ctx.fillText(result.tier, 245, 310)
 
   ctx.fillStyle = 'rgba(43,43,54,0.7)'
   ctx.font = '500 13px system-ui, sans-serif'
-  ctx.fillText('80억분의 1 · 연애 시뮬레이션', 245, 150)
+  ctx.fillText('재력 백분위 테스트', 245, 150)
 }

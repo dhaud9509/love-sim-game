@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { track } from '@vercel/analytics'
 import type { GameResult } from '../types'
-import { portraitDataUrl } from '../portrait'
-import { loadImage, roundRect } from '../canvasUtils'
+import { badgeDataUrl } from '../badge'
+import { tierProfiles, categoryLabels } from '../data/tiers'
+import { loadImage, roundRect, clamp01, hexToRgba } from '../canvasUtils'
 
 interface ResultVideoProps {
   result: GameResult
@@ -10,8 +11,8 @@ interface ResultVideoProps {
 
 const WIDTH = 540
 const HEIGHT = 960
-const PORTRAIT_CENTER = { x: WIDTH / 2, y: 360 }
-const PORTRAIT_RADIUS = 110
+const BADGE_CENTER = { x: WIDTH / 2, y: 360 }
+const BADGE_RADIUS = 110
 const DURATION = 5
 
 type Status = 'idle' | 'recording' | 'done' | 'unsupported'
@@ -21,10 +22,6 @@ const MIME_CANDIDATES = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'vide
 function pickMimeType(): string | null {
   if (typeof MediaRecorder === 'undefined') return null
   return MIME_CANDIDATES.find((type) => MediaRecorder.isTypeSupported(type)) ?? null
-}
-
-function clamp01(n: number): number {
-  return Math.max(0, Math.min(1, n))
 }
 
 function easeOutCubic(x: number): number {
@@ -46,22 +43,20 @@ function fadeSlideIn(t: number, start: number, duration: number): { alpha: numbe
 const TIMELINE = {
   badgePop: 0.35,
   eyebrowFade: 0.3,
-  portraitEntrance: 0.6,
-  portraitFade: 0.4,
-  name: 0.5,
-  subline: 0.7,
-  tagline: 0.9,
-  quote: 1.3,
+  badgeEntrance: 0.6,
+  badgeFade: 0.4,
+  headline: 0.5,
+  tagline: 0.8,
   textFadeDuration: 0.45,
-  countStart: 1.9,
-  countDuration: 1.0,
+  countStart: 1.6,
+  countDuration: 1.2,
   countFadeDuration: 0.4,
-  hashtag: 1.8,
+  hashtag: 2.4,
   burstStart: 2.8,
   burstDuration: 1.0,
-  blinkOffset: 0.9,
-  blinkPeriod: 2.3,
-  blinkWindow: 0.15,
+  shineOffset: 0.9,
+  shinePeriod: 2.3,
+  shineWindow: 0.35,
 }
 
 export function ResultVideo({ result }: ResultVideoProps) {
@@ -97,10 +92,7 @@ export function ResultVideo({ result }: ResultVideoProps) {
     setProgress(0)
     setStatus('recording')
 
-    const [openImg, closedImg] = await Promise.all([
-      loadImage(portraitDataUrl({ vibe: result.character.vibe, trait: result.character.trait })),
-      loadImage(portraitDataUrl({ vibe: result.character.vibe, trait: result.character.trait, blink: true })),
-    ])
+    const badgeImg = await loadImage(badgeDataUrl(result.tier))
 
     const stream = canvas.captureStream(30)
     const chunks: BlobPart[] = []
@@ -113,7 +105,7 @@ export function ResultVideo({ result }: ResultVideoProps) {
       setVideoBlob(blob)
       setVideoUrl(URL.createObjectURL(blob))
       setStatus('done')
-      track('video_generated', { character: result.character.key })
+      track('video_generated', { tier: result.tier })
     }
 
     recorder.start()
@@ -121,7 +113,7 @@ export function ResultVideo({ result }: ResultVideoProps) {
 
     function tick(now: number) {
       const t = (now - startTime) / 1000
-      drawFrame(ctx, result, openImg, closedImg, t)
+      drawFrame(ctx, result, badgeImg, t)
       setProgress(clamp01(t / DURATION))
       if (t < DURATION) {
         requestAnimationFrame(tick)
@@ -135,25 +127,25 @@ export function ResultVideo({ result }: ResultVideoProps) {
   function handleDownload() {
     if (!videoUrl) return
     const link = document.createElement('a')
-    link.download = `love-sim-video-${result.character.key}.webm`
+    link.download = `wealth-test-video-${result.tier}.webm`
     link.href = videoUrl
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-    track('video_download', { character: result.character.key })
+    track('video_download', { tier: result.tier })
   }
 
   async function handleShare() {
     if (!videoBlob) return
     try {
-      const file = new File([videoBlob], `love-sim-video-${result.character.key}.webm`, { type: videoBlob.type })
+      const file = new File([videoBlob], `wealth-test-video-${result.tier}.webm`, { type: videoBlob.type })
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
         await navigator.share({
           files: [file],
-          title: '80억분의 1 · 연애 시뮬레이션',
-          text: `'${result.character.name}'과(와)의 매칭 영상이야!`,
+          title: '재력 백분위 테스트',
+          text: `상위 ${result.overallPercentile}%, '${result.tier}'가 나왔어!`,
         })
-        track('video_share', { character: result.character.key })
+        track('video_share', { tier: result.tier })
       }
     } catch {
       // user cancelled or share unsupported — the download button already covers this case
@@ -162,7 +154,7 @@ export function ResultVideo({ result }: ResultVideoProps) {
 
   return (
     <div className="video-card">
-      <p className="video-title">매칭 영상</p>
+      <p className="video-title">결과 영상</p>
 
       {status === 'unsupported' && (
         <p className="video-note">이 브라우저에서는 영상 생성을 지원하지 않아요. 최신 Chrome, Edge, Safari에서 시도해보세요.</p>
@@ -214,18 +206,13 @@ export function ResultVideo({ result }: ResultVideoProps) {
   )
 }
 
-function drawFrame(
-  ctx: CanvasRenderingContext2D,
-  result: GameResult,
-  openImg: HTMLImageElement,
-  closedImg: HTMLImageElement,
-  t: number,
-) {
-  const { character, tier, matchCount, traitLabel, vibeLabel } = result
+function drawFrame(ctx: CanvasRenderingContext2D, result: GameResult, badgeImg: HTMLImageElement, t: number) {
+  const { tier, overallPercentile, strongest, weakest } = result
+  const profile = tierProfiles[tier]
 
   const gradient = ctx.createLinearGradient(0, 0, WIDTH, HEIGHT)
-  gradient.addColorStop(0, character.gradient[0])
-  gradient.addColorStop(1, character.gradient[1])
+  gradient.addColorStop(0, profile.gradient[0])
+  gradient.addColorStop(1, profile.gradient[1])
   ctx.fillStyle = gradient
   ctx.fillRect(0, 0, WIDTH, HEIGHT)
 
@@ -235,7 +222,7 @@ function drawFrame(
   ctx.save()
   ctx.globalAlpha = easeOutCubic(clamp01(t / TIMELINE.eyebrowFade))
   ctx.font = '600 20px system-ui, sans-serif'
-  ctx.fillText('80억분의 1 · 연애 시뮬레이션', WIDTH / 2, 70)
+  ctx.fillText('재력 백분위 테스트', WIDTH / 2, 70)
   ctx.restore()
 
   ctx.save()
@@ -252,96 +239,90 @@ function drawFrame(
   ctx.restore()
 
   drawSparkles(ctx, t)
-  drawBurst(ctx, t, character.gradient[0])
+  drawBurst(ctx, t, profile.gradient[0])
 
-  const breatheT = Math.max(0, t - TIMELINE.portraitEntrance)
+  const breatheT = Math.max(0, t - TIMELINE.badgeEntrance)
   const bob = Math.sin(breatheT * 2) * 5
   const breathScale = 1 + Math.sin(breatheT * 2) * 0.015
-  const entranceScale = easeOutBack(clamp01(t / TIMELINE.portraitEntrance))
-  const portraitAlpha = easeOutCubic(clamp01(t / TIMELINE.portraitFade))
+  const entranceScale = easeOutBack(clamp01(t / TIMELINE.badgeEntrance))
+  const badgeAlpha = easeOutCubic(clamp01(t / TIMELINE.badgeFade))
   const scale = entranceScale * breathScale
 
-  const blinkPhase = (t - TIMELINE.blinkOffset) % TIMELINE.blinkPeriod
-  const isBlinking = blinkPhase >= 0 && blinkPhase < TIMELINE.blinkWindow
-  const portraitImg = isBlinking ? closedImg : openImg
-
   ctx.save()
-  ctx.globalAlpha = portraitAlpha
-  ctx.translate(PORTRAIT_CENTER.x, PORTRAIT_CENTER.y + bob)
+  ctx.globalAlpha = badgeAlpha
+  ctx.translate(BADGE_CENTER.x, BADGE_CENTER.y + bob)
   ctx.scale(scale, scale)
   ctx.beginPath()
-  ctx.arc(0, 0, PORTRAIT_RADIUS, 0, Math.PI * 2)
+  ctx.arc(0, 0, BADGE_RADIUS, 0, Math.PI * 2)
   ctx.closePath()
   ctx.fillStyle = 'rgba(255,255,255,0.2)'
   ctx.fill()
   ctx.clip()
-  ctx.drawImage(portraitImg, -PORTRAIT_RADIUS, -PORTRAIT_RADIUS, PORTRAIT_RADIUS * 2, PORTRAIT_RADIUS * 2)
+  ctx.drawImage(badgeImg, -BADGE_RADIUS, -BADGE_RADIUS, BADGE_RADIUS * 2, BADGE_RADIUS * 2)
+
+  const shinePhase = (t - TIMELINE.shineOffset) % TIMELINE.shinePeriod
+  if (shinePhase >= 0 && shinePhase < TIMELINE.shineWindow) {
+    const sweepP = shinePhase / TIMELINE.shineWindow
+    const sweepX = -BADGE_RADIUS * 1.6 + sweepP * BADGE_RADIUS * 3.2
+    ctx.save()
+    ctx.rotate(-0.5)
+    const shine = ctx.createLinearGradient(sweepX - 22, 0, sweepX + 22, 0)
+    shine.addColorStop(0, 'rgba(255,255,255,0)')
+    shine.addColorStop(0.5, 'rgba(255,255,255,0.6)')
+    shine.addColorStop(1, 'rgba(255,255,255,0)')
+    ctx.fillStyle = shine
+    ctx.fillRect(-BADGE_RADIUS * 2, -BADGE_RADIUS * 2, BADGE_RADIUS * 4, BADGE_RADIUS * 4)
+    ctx.restore()
+  }
   ctx.restore()
 
   ctx.save()
-  ctx.globalAlpha = portraitAlpha
+  ctx.globalAlpha = badgeAlpha
   ctx.strokeStyle = 'rgba(255,255,255,0.7)'
   ctx.lineWidth = 4
   ctx.beginPath()
-  ctx.arc(PORTRAIT_CENTER.x, PORTRAIT_CENTER.y + bob, PORTRAIT_RADIUS * scale, 0, Math.PI * 2)
+  ctx.arc(BADGE_CENTER.x, BADGE_CENTER.y + bob, BADGE_RADIUS * scale, 0, Math.PI * 2)
   ctx.stroke()
   ctx.restore()
 
   ctx.fillStyle = 'rgba(255,255,255,0.92)'
 
-  const nameAnim = fadeSlideIn(t, TIMELINE.name, TIMELINE.textFadeDuration)
+  const countStartValue = Math.min(92, overallPercentile + 35)
+  const countP = easeOutCubic(clamp01((t - TIMELINE.countStart) / TIMELINE.countDuration))
+  const shownPercentile = Math.round((countStartValue - (countStartValue - overallPercentile) * countP) * 10) / 10
+  const countPunch =
+    countP >= 1 ? 1 + Math.max(0, 1 - (t - TIMELINE.countStart - TIMELINE.countDuration) / 0.25) * 0.1 : 1
+
+  const headlineAnim = fadeSlideIn(t, TIMELINE.headline, TIMELINE.textFadeDuration)
   ctx.save()
-  ctx.globalAlpha = nameAnim.alpha
-  ctx.translate(0, nameAnim.dy)
-  ctx.font = '800 52px system-ui, sans-serif'
-  ctx.fillText(character.name, WIDTH / 2, PORTRAIT_CENTER.y + PORTRAIT_RADIUS + 70)
+  ctx.globalAlpha = headlineAnim.alpha
+  ctx.translate(WIDTH / 2, BADGE_CENTER.y + BADGE_RADIUS + 78 + headlineAnim.dy)
+  ctx.scale(countPunch, countPunch)
+  ctx.font = '800 54px system-ui, sans-serif'
+  ctx.fillText(`상위 ${shownPercentile}%`, 0, 0)
   ctx.restore()
 
-  const sublineAnim = fadeSlideIn(t, TIMELINE.subline, TIMELINE.textFadeDuration)
-  ctx.save()
-  ctx.globalAlpha = sublineAnim.alpha
-  ctx.translate(0, sublineAnim.dy)
-  ctx.font = '500 22px system-ui, sans-serif'
-  ctx.fillText(`${vibeLabel} 분위기 · ${traitLabel} 성격`, WIDTH / 2, PORTRAIT_CENTER.y + PORTRAIT_RADIUS + 104)
-  ctx.restore()
-
-  const taglineY = PORTRAIT_CENTER.y + PORTRAIT_RADIUS + 150
   const taglineAnim = fadeSlideIn(t, TIMELINE.tagline, TIMELINE.textFadeDuration)
   ctx.save()
   ctx.globalAlpha = taglineAnim.alpha
   ctx.translate(0, taglineAnim.dy)
-  const taglineEndY = wrapText(ctx, character.tagline, WIDTH / 2, taglineY, WIDTH - 120, 32)
-  ctx.restore()
-
-  const quoteAnim = fadeSlideIn(t, TIMELINE.quote, TIMELINE.textFadeDuration)
-  ctx.save()
-  ctx.globalAlpha = quoteAnim.alpha
-  ctx.translate(0, quoteAnim.dy)
-  ctx.font = 'italic 600 20px system-ui, sans-serif'
-  ctx.fillText(`"${character.line}"`, WIDTH / 2, taglineEndY + 44)
-  ctx.restore()
-
-  const countP = easeOutCubic(clamp01((t - TIMELINE.countStart) / TIMELINE.countDuration))
-  const shownCount = Math.round(matchCount * countP)
-  const countPunch = countP >= 1 ? 1 + Math.max(0, 1 - (t - TIMELINE.countStart - TIMELINE.countDuration) / 0.25) * 0.1 : 1
-  ctx.save()
-  ctx.globalAlpha = clamp01((t - TIMELINE.countStart) / TIMELINE.countFadeDuration)
-  ctx.translate(WIDTH / 2, taglineEndY + 110)
-  ctx.scale(countPunch, countPunch)
-  ctx.font = '700 30px system-ui, sans-serif'
-  ctx.fillText(`지구에 단 ${shownCount.toLocaleString()}명`, 0, 0)
+  const taglineEndY = wrapText(ctx, profile.tagline, WIDTH / 2, BADGE_CENTER.y + BADGE_RADIUS + 130, WIDTH - 110, 30)
   ctx.restore()
 
   ctx.save()
   ctx.globalAlpha = clamp01((t - TIMELINE.countStart) / TIMELINE.countFadeDuration)
-  ctx.font = '400 18px system-ui, sans-serif'
-  ctx.fillText('당신과 꼭 맞는 사람입니다', WIDTH / 2, taglineEndY + 142)
+  ctx.font = '500 20px system-ui, sans-serif'
+  ctx.fillText(
+    `강점 ${categoryLabels[strongest.category]} · 약점 ${categoryLabels[weakest.category]}`,
+    WIDTH / 2,
+    taglineEndY + 44,
+  )
   ctx.restore()
 
   ctx.save()
   ctx.globalAlpha = clamp01((t - TIMELINE.hashtag) / 0.5)
   ctx.font = '400 15px system-ui, sans-serif'
-  ctx.fillText('#80억분의1 #연애시뮬레이션', WIDTH / 2, HEIGHT - 40)
+  ctx.fillText('#재력백분위테스트 #수저계급', WIDTH / 2, HEIGHT - 40)
   ctx.restore()
 }
 
@@ -349,9 +330,9 @@ function drawSparkles(ctx: CanvasRenderingContext2D, t: number) {
   const count = 8
   for (let i = 0; i < count; i++) {
     const angle = (i / count) * Math.PI * 2 + t * 0.3
-    const radiusWobble = PORTRAIT_RADIUS + 30 + Math.sin(t * 1.5 + i) * 14
-    const x = PORTRAIT_CENTER.x + Math.cos(angle) * radiusWobble
-    const y = PORTRAIT_CENTER.y + Math.sin(angle) * radiusWobble * 0.9
+    const radiusWobble = BADGE_RADIUS + 30 + Math.sin(t * 1.5 + i) * 14
+    const x = BADGE_CENTER.x + Math.cos(angle) * radiusWobble
+    const y = BADGE_CENTER.y + Math.sin(angle) * radiusWobble * 0.9
     const twinkle = (Math.sin(t * 2 + i * 1.3) + 1) / 2
     ctx.beginPath()
     ctx.arc(x, y, 2.5 + twinkle * 2, 0, Math.PI * 2)
@@ -371,8 +352,8 @@ function drawBurst(ctx: CanvasRenderingContext2D, t: number, tintHex: string) {
   for (let i = 0; i < count; i++) {
     const angle = (i / count) * Math.PI * 2 + (i % 2 === 0 ? 0.12 : -0.12)
     const dist = eased * 80
-    const x = PORTRAIT_CENTER.x + Math.cos(angle) * (PORTRAIT_RADIUS + 14 + dist)
-    const y = PORTRAIT_CENTER.y + Math.sin(angle) * (PORTRAIT_RADIUS + 14 + dist) * 0.9
+    const x = BADGE_CENTER.x + Math.cos(angle) * (BADGE_RADIUS + 14 + dist)
+    const y = BADGE_CENTER.y + Math.sin(angle) * (BADGE_RADIUS + 14 + dist) * 0.9
     const size = 2 + (1 - progress) * 3.5
     const useTint = i % 3 === 0
 
@@ -381,14 +362,6 @@ function drawBurst(ctx: CanvasRenderingContext2D, t: number, tintHex: string) {
     ctx.fillStyle = useTint ? hexToRgba(tintHex, fade * 0.85) : `rgba(255,255,255,${fade * 0.85})`
     ctx.fill()
   }
-}
-
-function hexToRgba(hex: string, alpha: number): string {
-  const n = parseInt(hex.replace('#', ''), 16)
-  const r = (n >> 16) & 255
-  const g = (n >> 8) & 255
-  const b = n & 255
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }
 
 function wrapText(

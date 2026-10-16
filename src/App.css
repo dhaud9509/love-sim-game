@@ -138,18 +138,6 @@
   display: block;
 }
 
-.candidate-choices .like {
-  background: linear-gradient(135deg, #ff6fb0, #ff9a9e);
-  color: #fff;
-  text-align: center;
-  font-weight: 700;
-}
-
-.candidate-choices .pass {
-  background: rgba(255, 255, 255, 0.06);
-  text-align: center;
-}
-
 .result-hero {
   width: 100%;
   border-radius: 18px;
@@ -188,23 +176,36 @@
   opacity: 0.95;
 }
 
-.result-line {
-  font-size: 15px;
-  font-style: italic;
-  font-weight: 600;
-  margin-top: 14px;
-  opacity: 0.95;
+.radar-canvas {
+  display: block;
+  margin: 20px auto 8px;
+  max-width: 100%;
 }
 
-.match-count {
+.category-list {
+  list-style: none;
+  width: 100%;
+  margin: 0 0 20px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.category-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 14px;
   color: var(--text);
-  font-size: 15px;
-  margin-bottom: 20px;
 }
 
-.match-count strong {
+.category-list strong {
   color: var(--text-h);
-  font-size: 18px;
 }
 
 .share-card {

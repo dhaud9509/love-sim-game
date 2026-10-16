@@ -1,14 +1,24 @@
 import satori from 'satori'
 import { Resvg } from '@resvg/resvg-js'
-import { characterPool, traitLabels, vibeLabels } from './characters.js'
-import type { CharacterProfile } from './characters.js'
-import { portraitDataUrl } from './portrait.js'
+import { computeOgResult } from './engine.js'
+import { tierProfiles, categoryLabels } from './tiers.js'
+import type { FinanceCategory, TierProfile } from './tiers.js'
+import { badgeDataUrl } from './badge.js'
 
 export const config = { runtime: 'nodejs' }
 
 const WIDTH = 1200
 const HEIGHT = 630
 const FONT_URL = 'https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/public/static/Pretendard-Bold.otf'
+
+// Mirrors CATEGORY_PARAMS in src/game/share.ts
+const CATEGORY_PARAMS: Record<FinanceCategory, string> = {
+  income: 'inc',
+  spending: 'sp',
+  realEstate: 're',
+  stocks: 'st',
+  insurance: 'ins',
+}
 
 let fontCache: ArrayBuffer | null = null
 
@@ -32,13 +42,21 @@ async function renderPng(element: Parameters<typeof satori>[0]): Promise<Buffer>
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url, 'http://localhost')
-  const key = searchParams.get('r')
-  const character = key ? characterPool[key] : undefined
 
-  const rawCount = Number(searchParams.get('m'))
-  const matchCount = Number.isFinite(rawCount) && rawCount > 0 ? Math.round(rawCount) : null
+  const hasScores = (Object.values(CATEGORY_PARAMS) as string[]).some((param) => searchParams.has(param))
 
-  const png = character ? await renderPng(characterCard(character, matchCount)) : await renderPng(genericCard())
+  let png: Buffer
+  if (hasScores) {
+    const scores = {} as Record<FinanceCategory, number>
+    for (const [category, param] of Object.entries(CATEGORY_PARAMS) as [FinanceCategory, string][]) {
+      const raw = Number(searchParams.get(param))
+      scores[category] = Number.isFinite(raw) && raw >= 0 ? raw : 0
+    }
+    const result = computeOgResult(scores)
+    png = await renderPng(resultCard(result))
+  } else {
+    png = await renderPng(genericCard())
+  }
 
   return new Response(new Uint8Array(png), {
     headers: {
@@ -63,18 +81,24 @@ function genericCard() {
       }}
     >
       <div style={{ display: 'flex', fontSize: 22, letterSpacing: 6, color: '#ff4f9a', fontWeight: 700, marginBottom: 14 }}>
-        LOVE SIMULATION
+        WEALTH PERCENTILE TEST
       </div>
-      <div style={{ display: 'flex', fontSize: 84, fontWeight: 800, color: '#fff' }}>80억분의 1</div>
+      <div style={{ display: 'flex', fontSize: 72, fontWeight: 800, color: '#fff' }}>재력 백분위 테스트</div>
       <div style={{ display: 'flex', fontSize: 28, color: 'rgba(255,255,255,0.72)', marginTop: 20 }}>
-        선택을 거듭할수록, 당신의 이상형이 좁혀집니다
+        수입·지출·부동산·주식·보험, 5개 항목으로 보는 내 재력 상세 분석
       </div>
     </div>
   )
 }
 
-function characterCard(character: CharacterProfile, matchCount: number | null) {
-  const portraitSrc = portraitDataUrl({ vibe: character.vibe, trait: character.trait })
+function resultCard(result: {
+  tier: TierProfile['tier']
+  overallPercentile: number
+  strongest: { category: FinanceCategory }
+  weakest: { category: FinanceCategory }
+}) {
+  const profile = tierProfiles[result.tier]
+  const badgeSrc = badgeDataUrl(result.tier)
 
   return (
     <div
@@ -85,35 +109,35 @@ function characterCard(character: CharacterProfile, matchCount: number | null) {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        background: `linear-gradient(135deg, ${character.gradient[0]}, ${character.gradient[1]})`,
+        background: `linear-gradient(135deg, ${profile.gradient[0]}, ${profile.gradient[1]})`,
         fontFamily: 'Pretendard',
       }}
     >
       <div style={{ display: 'flex', fontSize: 20, letterSpacing: 4, color: 'rgba(255,255,255,0.88)', fontWeight: 700, marginBottom: 20 }}>
-        80억분의 1 · 연애 시뮬레이션
+        재력 백분위 테스트
       </div>
       <div
         style={{
           display: 'flex',
-          width: 190,
-          height: 190,
+          width: 180,
+          height: 180,
           borderRadius: '50%',
           overflow: 'hidden',
           border: '6px solid rgba(255,255,255,0.85)',
-          marginBottom: 24,
+          marginBottom: 20,
         }}
       >
-        <img src={portraitSrc} width={190} height={190} />
+        <img src={badgeSrc} width={180} height={180} />
       </div>
-      <div style={{ display: 'flex', fontSize: 64, fontWeight: 800, color: '#fff', marginBottom: 10 }}>{character.name}</div>
-      <div style={{ display: 'flex', fontSize: 26, color: 'rgba(255,255,255,0.88)', marginBottom: matchCount ? 18 : 0 }}>
-        {vibeLabels[character.vibe]} 분위기 · {traitLabels[character.trait]} 성격
+      <div style={{ display: 'flex', fontSize: 56, fontWeight: 800, color: '#fff', marginBottom: 6 }}>
+        상위 {result.overallPercentile}%
       </div>
-      {matchCount && (
-        <div style={{ display: 'flex', fontSize: 30, fontWeight: 700, color: '#fff' }}>
-          지구에 단 {matchCount.toLocaleString()}명
-        </div>
-      )}
+      <div style={{ display: 'flex', fontSize: 30, fontWeight: 700, color: '#fff', marginBottom: 16 }}>
+        [ {result.tier} ]
+      </div>
+      <div style={{ display: 'flex', fontSize: 24, color: 'rgba(255,255,255,0.88)' }}>
+        강점 {categoryLabels[result.strongest.category]} · 약점 {categoryLabels[result.weakest.category]}
+      </div>
     </div>
   )
 }

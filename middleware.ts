@@ -2,6 +2,8 @@ export const config = {
   matcher: '/',
 }
 
+const SCORE_PARAMS = ['inc', 'sp', 're', 'st', 'ins']
+
 function replaceMetaContent(html: string, selectorAttr: string, selectorValue: string, newContent: string): string {
   const pattern = new RegExp(
     `(<meta[^>]*${selectorAttr}="${selectorValue}"[^>]*content=")[^"]*(")`,
@@ -12,11 +14,15 @@ function replaceMetaContent(html: string, selectorAttr: string, selectorValue: s
 export default async function middleware(request: Request) {
   try {
     const url = new URL(request.url)
-    const key = url.searchParams.get('r')
-    if (!key) return
+    const hasScores = SCORE_PARAMS.some((param) => url.searchParams.has(param))
+    if (!hasScores) return
 
-    const matchCount = url.searchParams.get('m') ?? ''
-    const ogImageUrl = `${url.origin}/api/og?r=${encodeURIComponent(key)}&m=${encodeURIComponent(matchCount)}`
+    const ogParams = new URLSearchParams()
+    for (const param of SCORE_PARAMS) {
+      const value = url.searchParams.get(param)
+      if (value !== null) ogParams.set(param, value)
+    }
+    const ogImageUrl = `${url.origin}/api/og?${ogParams.toString()}`
 
     const response = await fetch(new URL('/index.html', request.url))
     if (!response.ok) return

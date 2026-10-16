@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { track } from '@vercel/analytics'
 import type { GameResult } from '../types'
-import { portraitDataUrl } from '../portrait'
+import { badgeDataUrl } from '../badge'
+import { tierProfiles, categoryLabels } from '../data/tiers'
+import { drawRadarChart } from '../radarChart'
 
 interface ShareCardProps {
   result: GameResult
@@ -10,8 +12,8 @@ interface ShareCardProps {
 
 const WIDTH = 600
 const HEIGHT = 900
-const PORTRAIT_CENTER_Y = 250
-const PORTRAIT_RADIUS = 90
+const BADGE_CENTER_Y = 230
+const BADGE_RADIUS = 80
 
 type CopyStatus = 'idle' | 'copied' | 'error'
 
@@ -26,11 +28,11 @@ export function ShareCard({ result, shareUrl }: ShareCardProps) {
     if (!ctx) return
 
     let cancelled = false
-    const portrait = new Image()
-    portrait.onload = () => {
-      if (!cancelled) draw(ctx, result, portrait)
+    const badge = new Image()
+    badge.onload = () => {
+      if (!cancelled) draw(ctx, result, badge)
     }
-    portrait.src = portraitDataUrl({ vibe: result.character.vibe, trait: result.character.trait })
+    badge.src = badgeDataUrl(result.tier)
 
     return () => {
       cancelled = true
@@ -46,7 +48,7 @@ export function ShareCard({ result, shareUrl }: ShareCardProps) {
     try {
       await navigator.clipboard.writeText(shareUrl)
       flashCopyStatus('copied')
-      track('share_copy_link', { character: result.character.key })
+      track('share_copy_link', { tier: result.tier })
     } catch {
       flashCopyStatus('error')
     }
@@ -56,16 +58,16 @@ export function ShareCard({ result, shareUrl }: ShareCardProps) {
     const canvas = canvasRef.current
     if (!canvas) return
     const link = document.createElement('a')
-    link.download = `love-sim-result-${result.character.key}.png`
+    link.download = `wealth-test-result-${result.tier}.png`
     link.href = canvas.toDataURL('image/png')
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-    track('share_download_image', { character: result.character.key })
+    track('share_download_image', { tier: result.tier })
   }
 
   async function handleShare() {
-    const shareText = `나는 80억분의 1 중 '${result.character.name}'과(와) 매칭됐어! 너의 상대는 누구일까?`
+    const shareText = `나는 재력 백분위 테스트에서 '${result.tier}' · 상위 ${result.overallPercentile}%가 나왔어! 너는 몇 %일까?`
     const canvas = canvasRef.current
 
     if (navigator.share) {
@@ -73,16 +75,16 @@ export function ShareCard({ result, shareUrl }: ShareCardProps) {
         if (canvas && navigator.canShare) {
           const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'))
           if (blob) {
-            const file = new File([blob], `love-sim-result-${result.character.key}.png`, { type: 'image/png' })
+            const file = new File([blob], `wealth-test-result-${result.tier}.png`, { type: 'image/png' })
             if (navigator.canShare({ files: [file] })) {
-              await navigator.share({ files: [file], title: '80억분의 1 · 연애 시뮬레이션', text: shareText, url: shareUrl })
-              track('share_native', { character: result.character.key })
+              await navigator.share({ files: [file], title: '재력 백분위 테스트', text: shareText, url: shareUrl })
+              track('share_native', { tier: result.tier })
               return
             }
           }
         }
-        await navigator.share({ title: '80억분의 1 · 연애 시뮬레이션', text: shareText, url: shareUrl })
-        track('share_native', { character: result.character.key })
+        await navigator.share({ title: '재력 백분위 테스트', text: shareText, url: shareUrl })
+        track('share_native', { tier: result.tier })
         return
       } catch (err) {
         if ((err as Error)?.name === 'AbortError') return
@@ -112,12 +114,13 @@ export function ShareCard({ result, shareUrl }: ShareCardProps) {
   )
 }
 
-function draw(ctx: CanvasRenderingContext2D, result: GameResult, portrait: HTMLImageElement) {
-  const { character, tier, matchCount, traitLabel, vibeLabel } = result
+function draw(ctx: CanvasRenderingContext2D, result: GameResult, badge: HTMLImageElement) {
+  const { tier, overallPercentile, categories, strongest, weakest } = result
+  const profile = tierProfiles[tier]
 
   const gradient = ctx.createLinearGradient(0, 0, WIDTH, HEIGHT)
-  gradient.addColorStop(0, character.gradient[0])
-  gradient.addColorStop(1, character.gradient[1])
+  gradient.addColorStop(0, profile.gradient[0])
+  gradient.addColorStop(1, profile.gradient[1])
   ctx.fillStyle = gradient
   ctx.fillRect(0, 0, WIDTH, HEIGHT)
 
@@ -125,59 +128,58 @@ function draw(ctx: CanvasRenderingContext2D, result: GameResult, portrait: HTMLI
   ctx.textAlign = 'center'
 
   ctx.font = '600 22px system-ui, sans-serif'
-  ctx.fillText('80억분의 1 · 연애 시뮬레이션', WIDTH / 2, 70)
+  ctx.fillText('재력 백분위 테스트', WIDTH / 2, 70)
 
   ctx.font = '700 26px system-ui, sans-serif'
   ctx.fillText(`[ ${tier} ]`, WIDTH / 2, 120)
 
   ctx.save()
   ctx.beginPath()
-  ctx.arc(WIDTH / 2, PORTRAIT_CENTER_Y, PORTRAIT_RADIUS, 0, Math.PI * 2)
+  ctx.arc(WIDTH / 2, BADGE_CENTER_Y, BADGE_RADIUS, 0, Math.PI * 2)
   ctx.closePath()
   ctx.fillStyle = 'rgba(255,255,255,0.2)'
   ctx.fill()
   ctx.clip()
-  ctx.drawImage(
-    portrait,
-    WIDTH / 2 - PORTRAIT_RADIUS,
-    PORTRAIT_CENTER_Y - PORTRAIT_RADIUS,
-    PORTRAIT_RADIUS * 2,
-    PORTRAIT_RADIUS * 2,
-  )
+  ctx.drawImage(badge, WIDTH / 2 - BADGE_RADIUS, BADGE_CENTER_Y - BADGE_RADIUS, BADGE_RADIUS * 2, BADGE_RADIUS * 2)
   ctx.restore()
 
   ctx.strokeStyle = 'rgba(255,255,255,0.7)'
   ctx.lineWidth = 4
   ctx.beginPath()
-  ctx.arc(WIDTH / 2, PORTRAIT_CENTER_Y, PORTRAIT_RADIUS, 0, Math.PI * 2)
+  ctx.arc(WIDTH / 2, BADGE_CENTER_Y, BADGE_RADIUS, 0, Math.PI * 2)
   ctx.stroke()
 
   ctx.fillStyle = 'rgba(255,255,255,0.92)'
   ctx.font = '800 56px system-ui, sans-serif'
-  ctx.fillText(character.name, WIDTH / 2, PORTRAIT_CENTER_Y + PORTRAIT_RADIUS + 70)
+  ctx.fillText(`상위 ${overallPercentile}%`, WIDTH / 2, BADGE_CENTER_Y + BADGE_RADIUS + 70)
 
-  ctx.font = '500 24px system-ui, sans-serif'
+  const taglineY = BADGE_CENTER_Y + BADGE_RADIUS + 106
+  const taglineEndY = wrapText(ctx, profile.tagline, WIDTH / 2, taglineY, WIDTH - 140, 30)
+
+  ctx.font = '500 18px system-ui, sans-serif'
   ctx.fillText(
-    `${vibeLabel} 분위기 · ${traitLabel} 성격`,
+    `강점 ${categoryLabels[strongest.category]} · 약점 ${categoryLabels[weakest.category]}`,
     WIDTH / 2,
-    PORTRAIT_CENTER_Y + PORTRAIT_RADIUS + 108,
+    taglineEndY + 36,
   )
 
-  const taglineStartY = PORTRAIT_CENTER_Y + PORTRAIT_RADIUS + 160
-  const taglineEndY = wrapText(ctx, character.tagline, WIDTH / 2, taglineStartY, WIDTH - 140, 34)
-
-  ctx.font = 'italic 600 22px system-ui, sans-serif'
-  ctx.fillText(`"${character.line}"`, WIDTH / 2, taglineEndY + 48)
-
-  const matchCountY = taglineEndY + 130
-  ctx.font = '700 32px system-ui, sans-serif'
-  ctx.fillText(`지구에 단 ${matchCount.toLocaleString()}명`, WIDTH / 2, matchCountY)
-
-  ctx.font = '400 20px system-ui, sans-serif'
-  ctx.fillText('당신과 꼭 맞는 사람입니다', WIDTH / 2, matchCountY + 40)
+  const radarCenterY = taglineEndY + 200
+  drawRadarChart(
+    ctx,
+    categories.map((c) => ({ label: categoryLabels[c.category], value: Math.max(0, 1 - c.percentile / 100) })),
+    {
+      centerX: WIDTH / 2,
+      centerY: radarCenterY,
+      radius: 128,
+      color: '#ffffff',
+      labelColor: 'rgba(255,255,255,0.92)',
+      gridColor: 'rgba(255,255,255,0.3)',
+      labelFont: '600 16px system-ui, sans-serif',
+    },
+  )
 
   ctx.font = '400 16px system-ui, sans-serif'
-  ctx.fillText('#80억분의1 #연애시뮬레이션', WIDTH / 2, HEIGHT - 40)
+  ctx.fillText('#재력백분위테스트 #수저계급', WIDTH / 2, HEIGHT - 40)
 }
 
 function wrapText(
@@ -188,7 +190,7 @@ function wrapText(
   maxWidth: number,
   lineHeight: number,
 ): number {
-  ctx.font = '500 24px system-ui, sans-serif'
+  ctx.font = '500 22px system-ui, sans-serif'
   const words = text.split(' ')
   let line = ''
   let offsetY = y

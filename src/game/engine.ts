@@ -1,65 +1,54 @@
-import { characterPool, traitLabels, vibeLabels } from '../data/characters'
-import type {
-  AppearanceVibe,
-  GameResult,
-  PersonalityScores,
-  PersonalityTrait,
-  RarityTier,
-  VibeScores,
-} from '../types'
+import { questions } from '../data/questions'
+import type { CategoryResult, CategoryScores, FinanceCategory, GameResult, Tier } from '../types'
 
-export const initialPersonalityScores: PersonalityScores = {
-  warm: 0,
-  cool: 0,
-  humor: 0,
-  serious: 0,
+const CATEGORIES: FinanceCategory[] = ['income', 'spending', 'realEstate', 'stocks', 'insurance']
+
+export const initialCategoryScores: CategoryScores = {
+  income: 0,
+  spending: 0,
+  realEstate: 0,
+  stocks: 0,
+  insurance: 0,
 }
 
-export const initialVibeScores: VibeScores = {
-  cute: 0,
-  chic: 0,
-  elegant: 0,
-  bright: 0,
+const categoryMax: CategoryScores = CATEGORIES.reduce((acc, category) => {
+  acc[category] = questions
+    .filter((q) => q.category === category)
+    .reduce((sum, q) => sum + Math.max(...q.choices.map((c) => c.score)), 0)
+  return acc
+}, {} as CategoryScores)
+
+const PERCENTILE_MIN = 0.5
+const PERCENTILE_MAX = 92
+
+function scoreToPercentile(score: number, max: number): number {
+  const fraction = max > 0 ? score / max : 0
+  const percentile = PERCENTILE_MIN + (1 - fraction) * (PERCENTILE_MAX - PERCENTILE_MIN)
+  return Math.round(percentile * 10) / 10
 }
 
-const tierRanges: Record<RarityTier, [number, number]> = {
-  일반: [3000, 30000],
-  레어: [300, 3000],
-  에픽: [30, 300],
-  레전더리: [1, 30],
+function percentileToTier(percentile: number): Tier {
+  if (percentile < 2) return '다이아몬드수저'
+  if (percentile < 15) return '금수저'
+  if (percentile < 40) return '은수저'
+  return '흙수저'
 }
 
-function topKeyAndMargin<T extends string>(scores: Record<T, number>): {
-  key: T
-  margin: number
-} {
-  const entries = Object.entries(scores) as [T, number][]
-  entries.sort((a, b) => b[1] - a[1])
-  const [topKey, topValue] = entries[0]
-  const secondValue = entries[1]?.[1] ?? 0
-  const total = entries.reduce((sum, [, value]) => sum + value, 0) || 1
-  const margin = Math.min(1, Math.max(0, (topValue - secondValue) / total))
-  return { key: topKey, margin }
-}
+export function computeResult(scores: CategoryScores): GameResult {
+  const categories: CategoryResult[] = CATEGORIES.map((category) => ({
+    category,
+    score: scores[category],
+    percentile: scoreToPercentile(scores[category], categoryMax[category]),
+  }))
 
-export function computeResult(
-  personalityScores: PersonalityScores,
-  vibeScores: VibeScores,
-): GameResult {
-  const { key: trait, margin: traitMargin } = topKeyAndMargin<PersonalityTrait>(personalityScores)
-  const { key: vibe, margin: vibeMargin } = topKeyAndMargin<AppearanceVibe>(vibeScores)
+  const overallPercentile =
+    Math.round((categories.reduce((sum, c) => sum + c.percentile, 0) / categories.length) * 10) / 10
 
-  const character = characterPool[`${trait}-${vibe}`]
-  const combinedMargin = (traitMargin + vibeMargin) / 2
+  const tier = percentileToTier(overallPercentile)
 
-  const [min, max] = tierRanges[character.tier]
-  const matchCount = Math.round(max - (max - min) * combinedMargin)
+  const sorted = [...categories].sort((a, b) => a.percentile - b.percentile)
+  const strongest = sorted[0]
+  const weakest = sorted[sorted.length - 1]
 
-  return {
-    character,
-    tier: character.tier,
-    matchCount,
-    traitLabel: traitLabels[trait],
-    vibeLabel: vibeLabels[vibe],
-  }
+  return { tier, overallPercentile, categories, strongest, weakest }
 }
