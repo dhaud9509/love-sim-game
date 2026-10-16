@@ -11,9 +11,9 @@ export function IntroScreen({ onStart, hasSavedProgress, onContinue }: IntroScre
       <h1 className="counter-number">상위 몇 %?</h1>
       <h2>재력 백분위 테스트</h2>
       <p className="description">
-        수입·지출·부동산·주식·보험, 5개 항목 20문항으로 알아보는 내 재력
-        상세 분석. 질문에 답하면 항목별 레이더 차트와 함께 당신의 재력
-        등급(수저계급)과 전체 백분위가 나옵니다.
+        수입·지출·부동산·주식·보험, 5개 항목에 실제 금액을 입력하면
+        항목별 레이더 차트와 함께 당신의 재력 등급(수저계급)과 전체
+        백분위가 나옵니다.
       </p>
       <button className="primary-button" onClick={onStart}>
         {hasSavedProgress ? '새로 시작하기' : '테스트 시작하기'}

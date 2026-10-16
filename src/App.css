@@ -51,8 +51,7 @@
 }
 
 .primary-button,
-.secondary-button,
-.choice-button {
+.secondary-button {
   width: 100%;
   border: none;
   border-radius: 14px;
@@ -69,6 +68,12 @@
   margin-bottom: 10px;
 }
 
+.primary-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .secondary-button {
   background: transparent;
   color: var(--text);
@@ -76,9 +81,8 @@
   margin-top: 12px;
 }
 
-.primary-button:hover,
-.secondary-button:hover,
-.choice-button:hover {
+.primary-button:not(:disabled):hover,
+.secondary-button:hover {
   transform: translateY(-2px);
   opacity: 0.92;
 }
@@ -98,29 +102,55 @@
   transition: width 0.3s ease;
 }
 
-.scene-text {
-  color: var(--text);
-  font-size: 15px;
-  line-height: 1.6;
-  margin-bottom: 14px;
+.amount-screen h2 {
+  margin-bottom: 24px;
 }
 
-.question-screen h2 {
-  margin-bottom: 20px;
-}
-
-.choice-list {
+.amount-input-row {
   width: 100%;
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 10px;
+  margin-bottom: 8px;
 }
 
-.choice-button {
+.amount-input {
+  flex: 1;
   background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 14px;
+  padding: 16px 18px;
+  font-size: 22px;
+  font-weight: 700;
   color: var(--text-h);
+  text-align: right;
+  outline: none;
+}
+
+.amount-input:focus {
+  border-color: var(--accent);
+}
+
+.amount-input::-webkit-outer-spin-button,
+.amount-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.amount-unit {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  min-width: 36px;
   text-align: left;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.amount-helper {
+  width: 100%;
+  text-align: left;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.45);
+  margin-bottom: 28px;
 }
 
 .portrait-frame {
@@ -204,6 +234,19 @@
   color: var(--text);
 }
 
+.category-list li > span {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.category-list em {
+  font-style: normal;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
 .category-list strong {
   color: var(--text-h);
 }
@@ -243,112 +286,6 @@
 
 .copy-feedback.error {
   color: #ff8a8a;
-}
-
-.video-card {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin: 24px 0 8px;
-  padding-top: 20px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.video-title {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-h);
-  margin-bottom: 14px;
-}
-
-.video-frame,
-video.video-canvas {
-  width: 100%;
-  max-width: 260px;
-}
-
-.video-canvas {
-  width: 100%;
-  border-radius: 16px;
-  margin-bottom: 14px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-  background: #000;
-}
-
-.video-progress-bar {
-  width: 100%;
-  max-width: 260px;
-  height: 6px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 999px;
-  overflow: hidden;
-  margin-bottom: 10px;
-}
-
-.video-progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--accent), #ff6fb0);
-  transition: width 0.1s linear;
-}
-
-.video-note {
-  font-size: 13px;
-  color: var(--text);
-  text-align: center;
-  margin-bottom: 10px;
-}
-
-.link-button {
-  background: none;
-  border: none;
-  color: var(--text);
-  font-size: 13px;
-  text-decoration: underline;
-  cursor: pointer;
-  margin-top: 10px;
-  padding: 4px;
-}
-
-.goods-card {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin: 24px 0 8px;
-  padding-top: 20px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.goods-tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-
-.goods-tab {
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text);
-  border-radius: 999px;
-  padding: 8px 16px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.goods-tab.active {
-  background: linear-gradient(135deg, var(--accent), #ff6fb0);
-  color: #fff;
-  border-color: transparent;
-}
-
-.goods-canvas {
-  width: 100%;
-  max-width: 280px;
-  border-radius: 16px;
-  margin-bottom: 14px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 }
 
 .future-note {

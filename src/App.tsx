@@ -2,18 +2,18 @@ import { useEffect, useMemo, useState } from 'react'
 import { track } from '@vercel/analytics'
 import './App.css'
 import { IntroScreen } from './components/IntroScreen'
-import { QuestionScreen } from './components/QuestionScreen'
+import { AmountScreen } from './components/AmountScreen'
 import { ResultScreen } from './components/ResultScreen'
-import { questions } from './data/questions'
-import { computeResult, initialCategoryScores } from './game/engine'
+import { categoryInputs } from './data/categoryInputs'
+import { computeResult, initialCategoryAmounts } from './game/engine'
 import { clearShareParams, parseSharedResult, syncShareUrl } from './game/share'
-import type { CategoryScores, FinanceCategory, GameResult, Screen } from './types'
+import type { CategoryAmounts, GameResult, Screen } from './types'
 
-const STORAGE_KEY = 'wealth-test-progress-v1'
+const STORAGE_KEY = 'wealth-test-progress-v2'
 
 interface SavedProgress {
   stepIndex: number
-  scores: CategoryScores
+  amounts: CategoryAmounts
 }
 
 function loadSavedProgress(): SavedProgress | null {
@@ -29,7 +29,7 @@ function loadSavedProgress(): SavedProgress | null {
 function App() {
   const [screen, setScreen] = useState<Screen>('intro')
   const [stepIndex, setStepIndex] = useState(0)
-  const [scores, setScores] = useState<CategoryScores>(initialCategoryScores)
+  const [amounts, setAmounts] = useState<CategoryAmounts>(initialCategoryAmounts)
   const [result, setResult] = useState<GameResult | null>(null)
   const [hasSavedProgress, setHasSavedProgress] = useState(false)
   const [isSharedView, setIsSharedView] = useState(false)
@@ -46,17 +46,17 @@ function App() {
     setHasSavedProgress(loadSavedProgress() !== null)
   }, [])
 
-  const currentQuestion = useMemo(() => questions[stepIndex], [stepIndex])
+  const currentInput = useMemo(() => categoryInputs[stepIndex], [stepIndex])
 
-  function persist(nextIndex: number, nextScores: CategoryScores) {
-    const data: SavedProgress = { stepIndex: nextIndex, scores: nextScores }
+  function persist(nextIndex: number, nextAmounts: CategoryAmounts) {
+    const data: SavedProgress = { stepIndex: nextIndex, amounts: nextAmounts }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
   }
 
-  function goToStep(index: number, nextScores: CategoryScores) {
-    if (index >= questions.length) {
+  function goToStep(index: number, nextAmounts: CategoryAmounts) {
+    if (index >= categoryInputs.length) {
       localStorage.removeItem(STORAGE_KEY)
-      const finalResult = computeResult(nextScores)
+      const finalResult = computeResult(nextAmounts)
       setResult(finalResult)
       setIsSharedView(false)
       setScreen('result')
@@ -64,17 +64,17 @@ function App() {
       track('result_reached', { tier: finalResult.tier, percentile: finalResult.overallPercentile })
       return
     }
-    persist(index, nextScores)
+    persist(index, nextAmounts)
     setStepIndex(index)
-    setScores(nextScores)
-    setScreen('question')
+    setAmounts(nextAmounts)
+    setScreen('input')
   }
 
   function handleStartFresh() {
     localStorage.removeItem(STORAGE_KEY)
     setHasSavedProgress(false)
     track('game_start')
-    goToStep(0, initialCategoryScores)
+    goToStep(0, initialCategoryAmounts)
   }
 
   function handleContinue() {
@@ -84,13 +84,13 @@ function App() {
       return
     }
     setStepIndex(saved.stepIndex)
-    setScores(saved.scores)
-    setScreen('question')
+    setAmounts(saved.amounts)
+    setScreen('input')
   }
 
-  function handleQuestionChoice(category: FinanceCategory, score: number) {
-    const nextScores = { ...scores, [category]: scores[category] + score }
-    goToStep(stepIndex + 1, nextScores)
+  function handleAmountSubmit(amount: number) {
+    const nextAmounts = { ...amounts, [currentInput.category]: amount }
+    goToStep(stepIndex + 1, nextAmounts)
   }
 
   function handleRestart() {
@@ -111,12 +111,12 @@ function App() {
         />
       )}
 
-      {screen === 'question' && currentQuestion && (
-        <QuestionScreen
-          question={currentQuestion}
+      {screen === 'input' && currentInput && (
+        <AmountScreen
+          config={currentInput}
           index={stepIndex}
-          total={questions.length}
-          onChoose={(choice) => handleQuestionChoice(currentQuestion.category, choice.score)}
+          total={categoryInputs.length}
+          onSubmit={handleAmountSubmit}
         />
       )}
 

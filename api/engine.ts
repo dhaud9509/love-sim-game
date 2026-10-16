@@ -1,27 +1,37 @@
-// Mirrors the percentile/tier formula in src/game/engine.ts so the OG image
-// can be computed from the same `?inc=&sp=&re=&st=&ins=` share params without
-// importing across the api/ boundary (see the note in api/tiers.ts).
-// CATEGORY_MAX mirrors the sum of each category's max choice score in
-// src/data/questions.ts — keep in sync if those questions change.
+// Mirrors the amount-to-percentile formula in src/game/engine.ts so the OG
+// image can be computed from the same `?inc=&sp=&re=&st=&ins=` share params
+// (now raw 만원 amounts) without importing across the api/ boundary — see the
+// note in api/tiers.ts. Keep BENCHMARKS in sync with src/game/engine.ts.
 
 import type { FinanceCategory } from './tiers.js'
 import type { Tier } from './badge.js'
 
-const CATEGORY_MAX: Record<FinanceCategory, number> = {
-  income: 40,
-  spending: 40,
-  realEstate: 40,
-  stocks: 39,
-  insurance: 40,
+interface Benchmark {
+  median: number
+  steepness: number
+  invert?: boolean
 }
 
-const PERCENTILE_MIN = 0.5
-const PERCENTILE_MAX = 92
+const BENCHMARKS: Record<FinanceCategory, Benchmark> = {
+  income: { median: 300, steepness: 1.1 },
+  spending: { median: 200, steepness: 1.0, invert: true },
+  realEstate: { median: 10000, steepness: 0.9 },
+  stocks: { median: 500, steepness: 0.9 },
+  insurance: { median: 15, steepness: 0.8 },
+}
 
-function scoreToPercentile(score: number, max: number): number {
-  const fraction = max > 0 ? score / max : 0
-  const percentile = PERCENTILE_MIN + (1 - fraction) * (PERCENTILE_MAX - PERCENTILE_MIN)
-  return Math.round(percentile * 10) / 10
+const PERCENTILE_MIN = 0.1
+const PERCENTILE_MAX = 95
+
+function amountToPercentile(amount: number, benchmark: Benchmark): number {
+  const safeAmount = Math.max(amount, 0)
+  const ratio = benchmark.invert
+    ? benchmark.median / Math.max(safeAmount, 1)
+    : Math.max(safeAmount, 1) / benchmark.median
+
+  const x = Math.log2(Math.max(ratio, 0.001))
+  const percentile = 100 / (1 + Math.pow(2, x * benchmark.steepness))
+  return Math.round(Math.min(PERCENTILE_MAX, Math.max(PERCENTILE_MIN, percentile)) * 10) / 10
 }
 
 function percentileToTier(percentile: number): Tier {
@@ -43,10 +53,10 @@ export interface OgResult {
   weakest: OgCategoryResult
 }
 
-export function computeOgResult(scores: Partial<Record<FinanceCategory, number>>): OgResult {
-  const categories = (Object.keys(CATEGORY_MAX) as FinanceCategory[]).map((category) => ({
+export function computeOgResult(amounts: Partial<Record<FinanceCategory, number>>): OgResult {
+  const categories = (Object.keys(BENCHMARKS) as FinanceCategory[]).map((category) => ({
     category,
-    percentile: scoreToPercentile(scores[category] ?? 0, CATEGORY_MAX[category]),
+    percentile: amountToPercentile(amounts[category] ?? 0, BENCHMARKS[category]),
   }))
 
   const overallPercentile =

@@ -2,24 +2,20 @@ export type FinanceCategory = 'income' | 'spending' | 'realEstate' | 'stocks' | 
 
 export type Tier = '흙수저' | '은수저' | '금수저' | '다이아몬드수저'
 
-export interface QuestionChoice {
-  text: string
-  score: number
-}
-
-export interface Question {
-  id: string
+export interface CategoryInputConfig {
   category: FinanceCategory
-  scene: string
+  title: string
   prompt: string
-  choices: QuestionChoice[]
+  unit: string
+  placeholder: string
+  helper: string
 }
 
-export type CategoryScores = Record<FinanceCategory, number>
+export type CategoryAmounts = Record<FinanceCategory, number>
 
 export interface CategoryResult {
   category: FinanceCategory
-  score: number
+  amount: number
   percentile: number
 }
 
@@ -37,4 +33,4 @@ export interface GameResult {
   weakest: CategoryResult
 }
 
-export type Screen = 'intro' | 'question' | 'result'
+export type Screen = 'intro' | 'input' | 'result'

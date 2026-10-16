@@ -4,8 +4,6 @@ import { tierProfiles, categoryLabels } from '../data/tiers'
 import { TierBadge } from './TierBadge'
 import { RadarChart } from './RadarChart'
 import { ShareCard } from './ShareCard'
-import { ResultVideo } from './ResultVideo'
-import { GoodsPreview } from './GoodsPreview'
 
 interface ResultScreenProps {
   result: GameResult
@@ -43,17 +41,16 @@ export function ResultScreen({ result, onRestart, isShared = false }: ResultScre
       <ul className="category-list">
         {categories.map((c) => (
           <li key={c.category}>
-            <span>{categoryLabels[c.category]}</span>
+            <span>
+              {categoryLabels[c.category]}
+              <em>{c.amount.toLocaleString()}만원</em>
+            </span>
             <strong>상위 {c.percentile}%</strong>
           </li>
         ))}
       </ul>
 
       <ShareCard result={result} shareUrl={shareUrl} />
-
-      <ResultVideo result={result} />
-
-      <GoodsPreview result={result} />
 
       <button className="secondary-button" onClick={onRestart}>
         {isShared ? '나도 테스트해보기' : '다시 테스트하기'}
