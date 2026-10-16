@@ -1,4 +1,5 @@
 import type { CategoryAmounts, CategoryResult, FinanceCategory, GameResult, Tier } from '../types'
+import { computeWorldRank } from './worldRank'
 
 const CATEGORIES: FinanceCategory[] = ['income', 'spending', 'realEstate', 'stocks', 'insurance']
 
@@ -10,10 +11,10 @@ export const initialCategoryAmounts: CategoryAmounts = {
   insurance: 0,
 }
 
-// Rough, illustrative reference points for entertainment purposes only — not
-// official statistics. `median` is the amount mapped to the 50th percentile;
-// `steepness` controls how fast the percentile moves per doubling of the
-// amount-to-median ratio; `invert` means a smaller amount ranks better.
+// Rough, illustrative reference points for the per-category "상세 분석"
+// radar chart — entertainment purposes only, not official statistics.
+// The headline tier/rank uses the real-data worldRank calculation instead
+// (see worldRank.ts); this curve only shapes the category breakdown.
 interface Benchmark {
   median: number
   steepness: number
@@ -49,21 +50,30 @@ function percentileToTier(percentile: number): Tier {
   return '흙수저'
 }
 
-export function computeResult(amounts: CategoryAmounts): GameResult {
+export function computeResult(amounts: CategoryAmounts, krwPerUsd: number, rateIsLive: boolean): GameResult {
   const categories: CategoryResult[] = CATEGORIES.map((category) => ({
     category,
     amount: amounts[category],
     percentile: amountToPercentile(amounts[category], BENCHMARKS[category]),
   }))
 
-  const overallPercentile =
-    Math.round((categories.reduce((sum, c) => sum + c.percentile, 0) / categories.length) * 10) / 10
-
-  const tier = percentileToTier(overallPercentile)
-
   const sorted = [...categories].sort((a, b) => a.percentile - b.percentile)
   const strongest = sorted[0]
   const weakest = sorted[sorted.length - 1]
 
-  return { tier, overallPercentile, categories, strongest, weakest }
+  // Net worth for the real-world ranking = property + investment assets.
+  // Income/spending/insurance are cash-flow figures, not a stock of wealth.
+  const assetsManwon = amounts.realEstate + amounts.stocks
+  const worldRank = computeWorldRank(assetsManwon, krwPerUsd, rateIsLive)
+  const tier = percentileToTier(worldRank.percentile)
+
+  return {
+    tier,
+    overallPercentile: worldRank.percentile,
+    categories,
+    strongest,
+    weakest,
+    worldRank,
+    assetsManwon,
+  }
 }

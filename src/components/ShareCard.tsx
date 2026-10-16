@@ -4,6 +4,7 @@ import type { GameResult } from '../types'
 import { badgeDataUrl } from '../badge'
 import { tierProfiles, categoryLabels } from '../data/tiers'
 import { drawRadarChart } from '../radarChart'
+import { formatCount } from '../format'
 
 interface ShareCardProps {
   result: GameResult
@@ -67,7 +68,7 @@ export function ShareCard({ result, shareUrl }: ShareCardProps) {
   }
 
   async function handleShare() {
-    const shareText = `나는 재력 백분위 테스트에서 '${result.tier}' · 상위 ${result.overallPercentile}%가 나왔어! 너는 몇 %일까?`
+    const shareText = `나는 전 세계 80억 명 중 약 ${formatCount(result.worldRank.rank)}등(상위 ${result.overallPercentile}%) · '${result.tier}'가 나왔어! 너는 몇 등일까?`
     const canvas = canvasRef.current
 
     if (navigator.share) {
@@ -115,7 +116,7 @@ export function ShareCard({ result, shareUrl }: ShareCardProps) {
 }
 
 function draw(ctx: CanvasRenderingContext2D, result: GameResult, badge: HTMLImageElement) {
-  const { tier, overallPercentile, categories, strongest, weakest } = result
+  const { tier, overallPercentile, categories, strongest, weakest, worldRank } = result
   const profile = tierProfiles[tier]
 
   const gradient = ctx.createLinearGradient(0, 0, WIDTH, HEIGHT)
@@ -150,10 +151,16 @@ function draw(ctx: CanvasRenderingContext2D, result: GameResult, badge: HTMLImag
   ctx.stroke()
 
   ctx.fillStyle = 'rgba(255,255,255,0.92)'
-  ctx.font = '800 56px system-ui, sans-serif'
-  ctx.fillText(`상위 ${overallPercentile}%`, WIDTH / 2, BADGE_CENTER_Y + BADGE_RADIUS + 70)
+  ctx.font = '500 18px system-ui, sans-serif'
+  ctx.fillText('전 세계 80억 명 중', WIDTH / 2, BADGE_CENTER_Y + BADGE_RADIUS + 40)
 
-  const taglineY = BADGE_CENTER_Y + BADGE_RADIUS + 106
+  ctx.font = '800 48px system-ui, sans-serif'
+  ctx.fillText(`약 ${formatCount(worldRank.rank)}등`, WIDTH / 2, BADGE_CENTER_Y + BADGE_RADIUS + 92)
+
+  ctx.font = '700 22px system-ui, sans-serif'
+  ctx.fillText(`상위 ${overallPercentile}%`, WIDTH / 2, BADGE_CENTER_Y + BADGE_RADIUS + 124)
+
+  const taglineY = BADGE_CENTER_Y + BADGE_RADIUS + 160
   const taglineEndY = wrapText(ctx, profile.tagline, WIDTH / 2, taglineY, WIDTH - 140, 30)
 
   ctx.font = '500 18px system-ui, sans-serif'

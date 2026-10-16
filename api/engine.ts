@@ -1,10 +1,10 @@
-// Mirrors the amount-to-percentile formula in src/game/engine.ts so the OG
-// image can be computed from the same `?inc=&sp=&re=&st=&ins=` share params
-// (now raw 만원 amounts) without importing across the api/ boundary — see the
-// note in api/tiers.ts. Keep BENCHMARKS in sync with src/game/engine.ts.
+// Mirrors src/game/engine.ts so the OG image's tier/rank match what the app
+// itself computes — see the note in api/tiers.ts for why this isn't imported
+// from ../src. Keep BENCHMARKS and the tier thresholds in sync.
 
 import type { FinanceCategory } from './tiers.js'
 import type { Tier } from './badge.js'
+import { computeWorldRank, fetchKrwPerUsd, type WorldRank } from './worldRank.js'
 
 interface Benchmark {
   median: number
@@ -51,18 +51,27 @@ export interface OgResult {
   overallPercentile: number
   strongest: OgCategoryResult
   weakest: OgCategoryResult
+  worldRank: WorldRank
 }
 
-export function computeOgResult(amounts: Partial<Record<FinanceCategory, number>>): OgResult {
+export async function computeOgResult(amounts: Partial<Record<FinanceCategory, number>>): Promise<OgResult> {
   const categories = (Object.keys(BENCHMARKS) as FinanceCategory[]).map((category) => ({
     category,
     percentile: amountToPercentile(amounts[category] ?? 0, BENCHMARKS[category]),
   }))
 
-  const overallPercentile =
-    Math.round((categories.reduce((sum, c) => sum + c.percentile, 0) / categories.length) * 10) / 10
-  const tier = percentileToTier(overallPercentile)
   const sorted = [...categories].sort((a, b) => a.percentile - b.percentile)
 
-  return { tier, overallPercentile, strongest: sorted[0], weakest: sorted[sorted.length - 1] }
+  const assetsManwon = (amounts.realEstate ?? 0) + (amounts.stocks ?? 0)
+  const krwPerUsd = await fetchKrwPerUsd()
+  const worldRank = computeWorldRank(assetsManwon, krwPerUsd)
+  const tier = percentileToTier(worldRank.percentile)
+
+  return {
+    tier,
+    overallPercentile: worldRank.percentile,
+    strongest: sorted[0],
+    weakest: sorted[sorted.length - 1],
+    worldRank,
+  }
 }

@@ -25,12 +25,22 @@ export interface TierProfile {
   gradient: [string, string]
 }
 
+export interface WorldRank {
+  usd: number
+  percentile: number
+  rank: number
+  krwPerUsd: number
+  rateIsLive: boolean
+}
+
 export interface GameResult {
   tier: Tier
   overallPercentile: number
   categories: CategoryResult[]
   strongest: CategoryResult
   weakest: CategoryResult
+  worldRank: WorldRank
+  assetsManwon: number
 }
 
-export type Screen = 'intro' | 'input' | 'result'
+export type Screen = 'intro' | 'input' | 'calculating' | 'result'

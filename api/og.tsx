@@ -1,9 +1,10 @@
 import satori from 'satori'
 import { Resvg } from '@resvg/resvg-js'
-import { computeOgResult } from './engine.js'
+import { computeOgResult, type OgResult } from './engine.js'
 import { tierProfiles, categoryLabels } from './tiers.js'
-import type { FinanceCategory, TierProfile } from './tiers.js'
+import type { FinanceCategory } from './tiers.js'
 import { badgeDataUrl } from './badge.js'
+import { formatCount } from './format.js'
 
 export const config = { runtime: 'nodejs' }
 
@@ -52,7 +53,7 @@ export async function GET(request: Request) {
       const raw = Number(searchParams.get(param))
       scores[category] = Number.isFinite(raw) && raw >= 0 ? raw : 0
     }
-    const result = computeOgResult(scores)
+    const result = await computeOgResult(scores)
     png = await renderPng(resultCard(result))
   } else {
     png = await renderPng(genericCard())
@@ -91,12 +92,7 @@ function genericCard() {
   )
 }
 
-function resultCard(result: {
-  tier: TierProfile['tier']
-  overallPercentile: number
-  strongest: { category: FinanceCategory }
-  weakest: { category: FinanceCategory }
-}) {
+function resultCard(result: OgResult) {
   const profile = tierProfiles[result.tier]
   const badgeSrc = badgeDataUrl(result.tier)
 
@@ -113,29 +109,32 @@ function resultCard(result: {
         fontFamily: 'Pretendard',
       }}
     >
-      <div style={{ display: 'flex', fontSize: 20, letterSpacing: 4, color: 'rgba(255,255,255,0.88)', fontWeight: 700, marginBottom: 20 }}>
+      <div style={{ display: 'flex', fontSize: 18, letterSpacing: 4, color: 'rgba(255,255,255,0.88)', fontWeight: 700, marginBottom: 16 }}>
         재력 백분위 테스트
       </div>
       <div
         style={{
           display: 'flex',
-          width: 180,
-          height: 180,
+          width: 150,
+          height: 150,
           borderRadius: '50%',
           overflow: 'hidden',
           border: '6px solid rgba(255,255,255,0.85)',
-          marginBottom: 20,
+          marginBottom: 16,
         }}
       >
-        <img src={badgeSrc} width={180} height={180} />
+        <img src={badgeSrc} width={150} height={150} />
       </div>
-      <div style={{ display: 'flex', fontSize: 56, fontWeight: 800, color: '#fff', marginBottom: 6 }}>
-        상위 {result.overallPercentile}%
+      <div style={{ display: 'flex', fontSize: 20, color: 'rgba(255,255,255,0.88)', marginBottom: 4 }}>
+        전 세계 80억 명 중
       </div>
-      <div style={{ display: 'flex', fontSize: 30, fontWeight: 700, color: '#fff', marginBottom: 16 }}>
-        [ {result.tier} ]
+      <div style={{ display: 'flex', fontSize: 50, fontWeight: 800, color: '#fff', marginBottom: 6 }}>
+        약 {formatCount(result.worldRank.rank)}등
       </div>
-      <div style={{ display: 'flex', fontSize: 24, color: 'rgba(255,255,255,0.88)' }}>
+      <div style={{ display: 'flex', fontSize: 24, fontWeight: 700, color: '#fff', marginBottom: 14 }}>
+        상위 {result.overallPercentile}% · [ {result.tier} ]
+      </div>
+      <div style={{ display: 'flex', fontSize: 20, color: 'rgba(255,255,255,0.88)' }}>
         강점 {categoryLabels[result.strongest.category]} · 약점 {categoryLabels[result.weakest.category]}
       </div>
     </div>

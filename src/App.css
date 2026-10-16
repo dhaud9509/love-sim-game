@@ -153,6 +153,31 @@
   margin-bottom: 28px;
 }
 
+.calculating-screen {
+  padding-top: 56px;
+  padding-bottom: 56px;
+}
+
+.calculating-screen h2 {
+  margin-bottom: 10px;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.15);
+  border-top-color: var(--accent);
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .portrait-frame {
   border-radius: 50%;
   overflow: hidden;
@@ -194,6 +219,18 @@
   color: #fff;
 }
 
+.world-rank-label {
+  font-size: 14px;
+  opacity: 0.85;
+  margin-bottom: 2px;
+}
+
+.world-rank-percentile {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+
 .result-sub {
   font-size: 15px;
   opacity: 0.9;
@@ -201,9 +238,32 @@
 }
 
 .result-tagline {
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.6;
   opacity: 0.95;
+}
+
+.rate-note {
+  font-size: 12px;
+  opacity: 0.7;
+  margin-top: 10px;
+}
+
+.section-label {
+  width: 100%;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 4px 0 0;
+}
+
+.category-callout {
+  width: 100%;
+  text-align: left;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  margin: -8px 0 20px;
 }
 
 .radar-canvas {

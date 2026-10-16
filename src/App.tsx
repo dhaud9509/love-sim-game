@@ -3,10 +3,12 @@ import { track } from '@vercel/analytics'
 import './App.css'
 import { IntroScreen } from './components/IntroScreen'
 import { AmountScreen } from './components/AmountScreen'
+import { CalculatingScreen } from './components/CalculatingScreen'
 import { ResultScreen } from './components/ResultScreen'
 import { categoryInputs } from './data/categoryInputs'
 import { computeResult, initialCategoryAmounts } from './game/engine'
-import { clearShareParams, parseSharedResult, syncShareUrl } from './game/share'
+import { fetchKrwPerUsd } from './game/worldRank'
+import { clearShareParams, hasSharedAmounts, parseSharedResult, syncShareUrl } from './game/share'
 import type { CategoryAmounts, GameResult, Screen } from './types'
 
 const STORAGE_KEY = 'wealth-test-progress-v2'
@@ -35,12 +37,18 @@ function App() {
   const [isSharedView, setIsSharedView] = useState(false)
 
   useEffect(() => {
-    const shared = parseSharedResult()
-    if (shared) {
-      setResult(shared)
-      setIsSharedView(true)
-      setScreen('result')
-      track('shared_view_opened', { tier: shared.tier })
+    if (hasSharedAmounts()) {
+      setScreen('calculating')
+      parseSharedResult().then((shared) => {
+        if (!shared) {
+          setScreen('intro')
+          return
+        }
+        setResult(shared)
+        setIsSharedView(true)
+        setScreen('result')
+        track('shared_view_opened', { tier: shared.tier })
+      })
       return
     }
     setHasSavedProgress(loadSavedProgress() !== null)
@@ -53,15 +61,21 @@ function App() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
   }
 
+  async function finishAndCompute(finalAmounts: CategoryAmounts) {
+    localStorage.removeItem(STORAGE_KEY)
+    setScreen('calculating')
+    const { rate, isLive } = await fetchKrwPerUsd()
+    const finalResult = computeResult(finalAmounts, rate, isLive)
+    setResult(finalResult)
+    setIsSharedView(false)
+    setScreen('result')
+    syncShareUrl(finalResult)
+    track('result_reached', { tier: finalResult.tier, percentile: finalResult.overallPercentile })
+  }
+
   function goToStep(index: number, nextAmounts: CategoryAmounts) {
     if (index >= categoryInputs.length) {
-      localStorage.removeItem(STORAGE_KEY)
-      const finalResult = computeResult(nextAmounts)
-      setResult(finalResult)
-      setIsSharedView(false)
-      setScreen('result')
-      syncShareUrl(finalResult)
-      track('result_reached', { tier: finalResult.tier, percentile: finalResult.overallPercentile })
+      void finishAndCompute(nextAmounts)
       return
     }
     persist(index, nextAmounts)
@@ -119,6 +133,8 @@ function App() {
           onSubmit={handleAmountSubmit}
         />
       )}
+
+      {screen === 'calculating' && <CalculatingScreen />}
 
       {screen === 'result' && result && (
         <ResultScreen result={result} onRestart={handleRestart} isShared={isSharedView} />

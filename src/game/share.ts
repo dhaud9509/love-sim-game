@@ -1,4 +1,5 @@
 import { computeResult } from './engine'
+import { fetchKrwPerUsd } from './worldRank'
 import type { CategoryAmounts, FinanceCategory, GameResult } from '../types'
 
 export const CATEGORY_PARAMS: Record<FinanceCategory, string> = {
@@ -25,17 +26,23 @@ export function buildShareUrl(result: GameResult): string {
   return url.toString()
 }
 
-export function parseSharedResult(): GameResult | null {
+export function hasSharedAmounts(): boolean {
   const params = new URLSearchParams(window.location.search)
-  const entries = Object.entries(CATEGORY_PARAMS) as [FinanceCategory, string][]
-  if (!entries.some(([, param]) => params.has(param))) return null
+  return (Object.values(CATEGORY_PARAMS) as string[]).some((param) => params.has(param))
+}
 
+export async function parseSharedResult(): Promise<GameResult | null> {
+  if (!hasSharedAmounts()) return null
+
+  const params = new URLSearchParams(window.location.search)
   const amounts = {} as CategoryAmounts
-  for (const [category, param] of entries) {
+  for (const [category, param] of Object.entries(CATEGORY_PARAMS) as [FinanceCategory, string][]) {
     const raw = Number(params.get(param))
     amounts[category] = Number.isFinite(raw) && raw >= 0 ? raw : 0
   }
-  return computeResult(amounts)
+
+  const { rate, isLive } = await fetchKrwPerUsd()
+  return computeResult(amounts, rate, isLive)
 }
 
 export function clearShareParams() {
